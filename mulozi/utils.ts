@@ -40,6 +40,20 @@ export function validateRegisterBody(body: Object) {
 }
 
 /**
+ * @desc Checks whether the body in login post request is in correct format
+ * @param body Body object passed in login post request
+ */
+export function validateLoginBody(body: Object) {
+  if ("email" in body === false) {
+    return "'email' is required";
+  }
+
+  if ("password" in body === false) {
+    return "'password' is required";
+  }
+}
+
+/**
  * @desc Checks whether email is valid
  * @param email The email string
  */
@@ -110,4 +124,37 @@ export async function createUser(
     });
 
   return { email: registeredUser.email, uuid: registeredUser.uuid };
+}
+
+/**
+ * @desc Logs a user into database
+ * @param user Registered user
+ */
+export async function login(user: RegisteredUser): Promise<boolean> {
+  let authenticatedUser = null;
+  const hashedPassword = await hashPassword(user.password);
+
+  // Check if user exists
+  await prisma.user
+    .findFirst({
+      where: {
+        email: user.email,
+      },
+    })
+    .then(async (result) => {
+      authenticatedUser = result;
+      await prisma.$disconnect();
+    })
+    .catch(async (e) => {
+      console.error(e);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+
+  if (authenticatedUser === null) return false;
+
+  // Check if password is correct !does not work, please fix
+  if (!(await argon2.verify(hashedPassword, user.password))) return false;
+
+  return true;
 }
