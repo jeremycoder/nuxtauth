@@ -2,6 +2,9 @@ import argon2 from "argon2";
 import { PrismaClient } from "@prisma/client";
 import { UnregisteredUser, RegisteredUser } from "./types";
 import { v4 as uuidv4 } from "uuid";
+import jwt from "jsonwebtoken";
+
+const config = useRuntimeConfig();
 
 const prisma = new PrismaClient();
 
@@ -145,7 +148,6 @@ export function validatePassword(password: string): boolean {
   return true;
 }
 
-// TODO: Should return user type
 /**
  * @desc Checks if a user exists
  * @param email User's email
@@ -205,9 +207,35 @@ export async function login(
   console.log("User hashed email: ", user.email);
 
   if (await verifyPassword(user.password, registeredUser.password)) {
+    // TODO: Create last login in table
+
+    // Public user profile does not show password or internal user id
+    const publicUser = {
+      uuid: user.uuid,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      role: user.role,
+      password_verified: user.password_verified,
+      last_login: user.last_login,
+      date_created: user.date_created,
+    };
+
+    // TODO: Very very well done. Contnue from here. Use access and refresh tokens.
+
+    // Create access and refresh tokens
+    const accessToken = jwt.sign(
+      publicUser,
+      config.public.muloziAccessTokenSecret
+    );
+    const refreshToken = jwt.sign(
+      publicUser,
+      config.public.muloziRefreshTokenSecret
+    );
+
     return {
-      accessToken: "auyudyauhaaiqww761e169eyddadaa",
-      refreshToken: "ajhsjhahsahuy818982uhwuhash8",
+      accessToken: accessToken,
+      refreshToken: refreshToken,
     };
   }
 
