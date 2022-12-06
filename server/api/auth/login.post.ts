@@ -14,7 +14,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Bad email format" });
   }
 
-  const isAuthenticated = await login(body);
+  const tokens = await login(body);
 
-  return { isAuthenticated };
+  if (tokens === null) {
+    throw createError({ statusCode: 401, statusMessage: "Invalid login" });
+  }
+
+  return { tokens };
 });

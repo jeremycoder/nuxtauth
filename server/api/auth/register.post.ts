@@ -3,6 +3,7 @@ import {
   validateEmail,
   emailExists,
   createUser,
+  validatePassword,
 } from "../../../mulozi/utils";
 
 export default defineEventHandler(async (event) => {
@@ -24,6 +25,15 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 403,
       statusMessage: "Email already exists",
+    });
+  }
+
+  // Check password meets minimum strength requirements
+  if (!validatePassword(body.password)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage:
+        "Poor password strength. Password must contain at least 8 characters, an upper-case letter, and a lower-case letter, a number, and a non-alphanumeric character.",
     });
   }
 

@@ -126,42 +126,40 @@ export async function createUser(
   return { email: registeredUser.email, uuid: registeredUser.uuid };
 }
 
+export function validatePassword(password: string): boolean {
+  // Has at least 8 characters
+  if (password.length <= 8) return false;
+
+  // Has uppercase letters
+  if (!/[A-Z]/.test(password)) return false;
+
+  // Has lowercase letters
+  if (!/[a-z]/.test(password)) return false;
+
+  // Has numbers
+  if (!/\d/.test(password)) return false;
+
+  // Has non-alphanumeric characters
+  if (!/\W/.test(password)) return false;
+
+  return true;
+}
+
+// TODO: Should return user type
 /**
- * @desc Logs a user into database
- * @param user Registered user
+ * @desc Checks if a user exists
+ * @param email User's email
  */
-export async function login(user: RegisteredUser): Promise<boolean> {
-  let authenticatedUser = {} as RegisteredUser;
-  const hashedPassword = await hashPassword(user.password);
-
-  let hash = null;
-  const password = "password";
-  try {
-    hash = await argon2.hash(password);
-  } catch (err) {
-    console.log("Hashing ERROR");
-  }
-
-  if (hash)
-    try {
-      if (await argon2.verify(hash, password)) {
-        console.log("Password hash match!");
-      } else {
-        console.log("Password hash NO match!");
-      }
-    } catch (err) {
-      console.log("Password hash internal failure!");
-    }
-
-  // Check if user exists
+async function getUser(email: string): Promise<RegisteredUser | null> {
+  let user = null;
   await prisma.user
     .findFirst({
       where: {
-        email: user.email,
+        email: email,
       },
     })
-    .then(async (result) => {
-      authenticatedUser = result;
+    .then(async (response) => {
+      user = response;
       await prisma.$disconnect();
     })
     .catch(async (e) => {
@@ -170,24 +168,48 @@ export async function login(user: RegisteredUser): Promise<boolean> {
       process.exit(1);
     });
 
-  // If null or undefined returned
-  if ([null, undefined].includes(authenticatedUser)) return false;
+  return user;
+}
 
-  // Check if password is correct !does not work, please fix
-  console.log("authenticated user: ", authenticatedUser);
-  console.log("authenticated user password: ", authenticatedUser.password);
-  console.log("user password: ", user.password);
-
+/**
+ * @desc Verifies password against a hash
+ * @param hash Hashed password
+ * @param password Unhashed password
+ */
+async function verifyPassword(
+  hash: string,
+  password: string
+): Promise<boolean> {
   try {
-    if (await argon2.verify(authenticatedUser.password, user.password)) {
-      console.log("Logged in!");
+    if (await argon2.verify(hash, password)) {
       return true;
     } else {
-      console.log("Incorrect password");
       return false;
     }
   } catch (err) {
-    console.log("Internal server error");
+    console.log(err);
     return false;
   }
+}
+
+/**
+ * @desc Logs a user into database
+ * @param registeredUser Registered user
+ */
+export async function login(
+  registeredUser: RegisteredUser
+): Promise<null | Object> {
+  const user = await getUser(registeredUser.email);
+  if (user === null) return null;
+
+  console.log("User hashed email: ", user.email);
+
+  if (await verifyPassword(user.password, registeredUser.password)) {
+    return {
+      accessToken: "auyudyauhaaiqww761e169eyddadaa",
+      refreshToken: "ajhsjhahsahuy818982uhwuhash8",
+    };
+  }
+
+  return null;
 }
