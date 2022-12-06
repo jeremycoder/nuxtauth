@@ -131,8 +131,27 @@ export async function createUser(
  * @param user Registered user
  */
 export async function login(user: RegisteredUser): Promise<boolean> {
-  let authenticatedUser = null;
+  let authenticatedUser = {} as RegisteredUser;
   const hashedPassword = await hashPassword(user.password);
+
+  let hash = null;
+  const password = "password";
+  try {
+    hash = await argon2.hash(password);
+  } catch (err) {
+    console.log("Hashing ERROR");
+  }
+
+  if (hash)
+    try {
+      if (await argon2.verify(hash, password)) {
+        console.log("Password hash match!");
+      } else {
+        console.log("Password hash NO match!");
+      }
+    } catch (err) {
+      console.log("Password hash internal failure!");
+    }
 
   // Check if user exists
   await prisma.user
@@ -151,10 +170,24 @@ export async function login(user: RegisteredUser): Promise<boolean> {
       process.exit(1);
     });
 
-  if (authenticatedUser === null) return false;
+  // If null or undefined returned
+  if ([null, undefined].includes(authenticatedUser)) return false;
 
   // Check if password is correct !does not work, please fix
-  if (!(await argon2.verify(hashedPassword, user.password))) return false;
+  console.log("authenticated user: ", authenticatedUser);
+  console.log("authenticated user password: ", authenticatedUser.password);
+  console.log("user password: ", user.password);
 
-  return true;
+  try {
+    if (await argon2.verify(authenticatedUser.password, user.password)) {
+      console.log("Logged in!");
+      return true;
+    } else {
+      console.log("Incorrect password");
+      return false;
+    }
+  } catch (err) {
+    console.log("Internal server error");
+    return false;
+  }
 }

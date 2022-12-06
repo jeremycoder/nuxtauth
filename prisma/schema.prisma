@@ -7,20 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model user {
   id                Int       @id @default(autoincrement())
   uuid              String    @unique(map: "uuid") @db.VarChar(60)
   email             String    @unique(map: "email") @db.VarChar(255)
-  password          String    @db.Char(60)
+  password          String    @db.VarChar(255)
   first_name        String    @db.VarChar(255)
   last_name         String    @db.VarChar(255)
-  role              Role      @default(GENERAL)
+  role              String    @default("GENERAL") @db.VarChar(255)
   password_verified Boolean   @default(false)
   last_login        DateTime? @db.DateTime(0)
   date_created      DateTime  @default(now()) @db.DateTime(0)
-}
-
-enum Role {
-  GENERAL
-  ADMIN
 }
