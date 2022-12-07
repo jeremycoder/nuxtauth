@@ -126,7 +126,7 @@ export async function createUser(
       process.exit(1);
     });
 
-  return { email: registeredUser.email, uuid: registeredUser.uuid };
+  return { email: registeredUser.email };
 }
 
 export function validatePassword(password: string): boolean {
@@ -174,6 +174,35 @@ async function getUser(email: string): Promise<RegisteredUser | null> {
 }
 
 /**
+ * @desc Updates user's last login value
+ * @param email User's email
+ */
+async function updateLastLogin(email: string): Promise<null | RegisteredUser> {
+  let result = null;
+  await prisma.user
+    .update({
+      where: {
+        email: email,
+      },
+      data: {
+        //TODO; Running into problems with date, need to fix
+        last_login: new Date().toISOString().slice(0, 19).replace("T", " "),
+      },
+    })
+    .then(async (response) => {
+      result = response;
+      await prisma.$disconnect();
+    })
+    .catch(async (e) => {
+      console.error(e);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+
+  return result;
+}
+
+/**
  * @desc Verifies password against a hash
  * @param hash Hashed password
  * @param password Unhashed password
@@ -208,6 +237,7 @@ export async function login(
 
   if (await verifyPassword(user.password, registeredUser.password)) {
     // TODO: Create last login in table
+    // updateLastLogin(user.email);
 
     // Public user profile does not show password or internal user id
     const publicUser = {
@@ -224,14 +254,8 @@ export async function login(
     // TODO: Very very well done. Contnue from here. Use access and refresh tokens.
 
     // Create access and refresh tokens
-    const accessToken = jwt.sign(
-      publicUser,
-      config.public.muloziAccessTokenSecret
-    );
-    const refreshToken = jwt.sign(
-      publicUser,
-      config.public.muloziRefreshTokenSecret
-    );
+    const accessToken = jwt.sign(publicUser, config.muloziAccessTokenSecret);
+    const refreshToken = jwt.sign(publicUser, config.muloziRefreshTokenSecret);
 
     return {
       accessToken: accessToken,
