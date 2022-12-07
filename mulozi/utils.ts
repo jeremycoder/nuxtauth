@@ -5,7 +5,6 @@ import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
 
 const config = useRuntimeConfig();
-
 const prisma = new PrismaClient();
 
 /**
@@ -152,7 +151,7 @@ export function validatePassword(password: string): boolean {
  * @desc Checks if a user exists
  * @param email User's email
  */
-async function getUser(email: string): Promise<RegisteredUser | null> {
+export async function getUser(email: string): Promise<RegisteredUser | null> {
   let user = null;
   await prisma.user
     .findFirst({
@@ -186,7 +185,7 @@ async function updateLastLogin(email: string): Promise<null | RegisteredUser> {
       },
       data: {
         //TODO; Running into problems with date, need to fix
-        last_login: new Date().toISOString().slice(0, 19).replace("T", " "),
+        last_login: new Date(),
       },
     })
     .then(async (response) => {
@@ -224,6 +223,23 @@ async function verifyPassword(
 }
 
 /**
+ * @desc Verifies user after token is passed
+ * @param token JSON web token
+ */
+export function verifyUser(token: string): null | RegisteredUser {
+  let verifiedUser = null;
+  jwt.verify(token, config.muloziAccessTokenSecret, (err, user) => {
+    if (err) {
+      console.log(err);
+      return null;
+    }
+    verifiedUser = user;
+  });
+
+  return verifiedUser;
+}
+
+/**
  * @desc Logs a user into database
  * @param registeredUser Registered user
  */
@@ -233,11 +249,10 @@ export async function login(
   const user = await getUser(registeredUser.email);
   if (user === null) return null;
 
-  console.log("User hashed email: ", user.email);
-
   if (await verifyPassword(user.password, registeredUser.password)) {
-    // TODO: Create last login in table
-    // updateLastLogin(user.email);
+    updateLastLogin(user.email);
+
+    // TODO: Maybe create a logins table
 
     // Public user profile does not show password or internal user id
     const publicUser = {
@@ -251,10 +266,10 @@ export async function login(
       date_created: user.date_created,
     };
 
-    // TODO: Very very well done. Contnue from here. Use access and refresh tokens.
-
     // Create access and refresh tokens
-    const accessToken = jwt.sign(publicUser, config.muloziAccessTokenSecret);
+    const accessToken = jwt.sign(publicUser, config.muloziAccessTokenSecret, {
+      expiresIn: "60s",
+    });
     const refreshToken = jwt.sign(publicUser, config.muloziRefreshTokenSecret);
 
     return {
