@@ -226,11 +226,65 @@ async function verifyPassword(
  * @desc Verifies user after token is passed
  * @param token JSON web token
  */
-export function verifyUser(token: string): null | RegisteredUser {
+export function verifyAccessToken(token: string): null | RegisteredUser {
   let verifiedUser = null;
   jwt.verify(token, config.muloziAccessTokenSecret, (err, user) => {
     if (err) {
       console.log(err);
+      return null;
+    }
+    verifiedUser = user;
+  });
+
+  return verifiedUser;
+}
+
+/**
+ * @desc Creates new tokens given a valid refresh token
+ * @param token JSON web token
+ */
+export function createNewTokensFromRefresh(token: string): null | Object {
+  const user = verifyRefreshToken(token);
+
+  const publicUser = {
+    uuid: user?.uuid,
+    email: user?.email,
+    role: user?.role,
+  };
+
+  if (user) {
+    // Create access and refresh tokens
+    const accessToken = jwt.sign(publicUser, config.muloziAccessTokenSecret, {
+      expiresIn: "15m",
+    });
+    const refreshToken = jwt.sign(publicUser, config.muloziRefreshTokenSecret, {
+      expiresIn: "14d",
+      issuer: "MuloziAuth",
+    });
+
+    return {
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * @desc Verifies refresh token
+ * @param token JSON web token
+ */
+export function verifyRefreshToken(token: string): null | RegisteredUser {
+  let verifiedUser = null;
+  jwt.verify(token, config.muloziRefreshTokenSecret, (err, user) => {
+    if (err) {
+      console.log(err);
+      return null;
+    }
+
+    // Checks for token issuer
+    if (user?.iss !== "MuloziAuth") {
       return null;
     }
     verifiedUser = user;
@@ -255,22 +309,32 @@ export async function login(
     // TODO: Maybe create a logins table
 
     // Public user profile does not show password or internal user id
+    // const publicUser = {
+    //   uuid: user.uuid,
+    //   first_name: user.first_name,
+    //   last_name: user.last_name,
+    //   email: user.email,
+    //   role: user.role,
+    //   password_verified: user.password_verified,
+    //   last_login: user.last_login,
+    //   date_created: user.date_created,
+    // };
+
+    // The rest of info can be exposed in /getProfile(uuid) endpoint
     const publicUser = {
       uuid: user.uuid,
-      first_name: user.first_name,
-      last_name: user.last_name,
       email: user.email,
       role: user.role,
-      password_verified: user.password_verified,
-      last_login: user.last_login,
-      date_created: user.date_created,
     };
 
     // Create access and refresh tokens
     const accessToken = jwt.sign(publicUser, config.muloziAccessTokenSecret, {
-      expiresIn: "60s",
+      expiresIn: "15m",
     });
-    const refreshToken = jwt.sign(publicUser, config.muloziRefreshTokenSecret);
+    const refreshToken = jwt.sign(publicUser, config.muloziRefreshTokenSecret, {
+      expiresIn: "14d",
+      issuer: "MuloziAuth",
+    });
 
     return {
       accessToken: accessToken,

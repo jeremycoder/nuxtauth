@@ -1,3 +1,3 @@
 export function protectedRoutes() {
-  return ["/api/mulozi/profile"];
+  return ["/api/mulozi/resources/profile"];
 }

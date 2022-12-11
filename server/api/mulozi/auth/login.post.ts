@@ -1,4 +1,8 @@
-import { validateLoginBody, validateEmail, login } from "../../../mulozi/utils";
+import {
+  validateLoginBody,
+  validateEmail,
+  login,
+} from "../../../../mulozi/utils";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);

@@ -1,5 +1,7 @@
+// Checks for authentication on protected routes
+
 import { protectedRoutes } from "../../mulozi/protectedRoutes";
-import { verifyUser, getUser } from "../../mulozi/utils";
+import { verifyAccessToken, getUser } from "../../mulozi/utils";
 const routes = protectedRoutes();
 
 export default defineEventHandler(async (event) => {
@@ -32,7 +34,7 @@ export default defineEventHandler(async (event) => {
         });
 
       // Get user from token
-      const user = verifyUser(bearerToken[1]);
+      const user = verifyAccessToken(bearerToken[1]);
 
       // Check if user was retrieved from token
       if (user === null)
@@ -51,12 +53,12 @@ export default defineEventHandler(async (event) => {
       // Check if user exists in the database
       const userInDb = await getUser(user.email);
 
+      // TODO: Must also check if user is ACTIVE
+
       if (userInDb === null)
         throw createError({
           statusCode: 401,
           statusMessage: "Unauthorized",
         });
-
-      return user;
     }
 });

@@ -4,7 +4,7 @@ import {
   emailExists,
   createUser,
   validatePassword,
-} from "../../../mulozi/utils";
+} from "../../../../mulozi/utils";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
